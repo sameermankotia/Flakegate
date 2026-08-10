@@ -1,0 +1,41 @@
+{
+  "name": "flakegate",
+  "version": "0.1.0",
+  "description": "A reliability gate for LLM calls in CI — run a prompt k times, score output consistency, fail the build if it drops below threshold.",
+  "keywords": ["llm", "ci", "testing", "reliability", "openai", "anthropic", "openrouter", "eval"],
+  "license": "MIT",
+  "author": "Sameer Mankotia",
+  "homepage": "https://github.com/sameermankotia/Flakegate",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sameermankotia/Flakegate.git",
+    "directory": "node"
+  },
+  "bugs": "https://github.com/sameermankotia/Flakegate/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "flakegate": "./dist/cli.js"
+  },
+  "files": ["dist", "src/config.schema.json"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp src/config.schema.json dist/config.schema.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "commander": "^12.1.0",
+    "openai": "^4.60.0",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

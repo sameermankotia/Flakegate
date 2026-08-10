@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sameermankotia/Flakegate/spec/config.schema.json",
+  "title": "Flakegate configuration",
+  "type": "object",
+  "required": ["version", "provider", "model", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["openai", "anthropic"],
+      "description": "Which model family to call. All calls are routed through OpenRouter's unified API rather than the native OpenAI/Anthropic APIs directly, so this selects the OpenRouter model-slug prefix ('<provider>/<model>')."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Bare model name without a provider prefix, e.g. 'gpt-4o-mini' or 'claude-sonnet-5'. Flakegate builds the full OpenRouter slug ('<provider>/<model>') internally."
+    },
+    "api_key_env": {
+      "type": "string",
+      "description": "Name of the environment variable holding the OpenRouter API key. Never put a literal key in this file.",
+      "default": "OPENROUTER_API_KEY"
+    },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "description": "Exactly one of 'prompt' or 'messages' must be set; this is enforced by each language implementation rather than by this schema, so implementations can give a precise error.",
+      "required": ["id", "repeat", "threshold"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Single-turn user prompt. Mutually exclusive with 'messages'."
+        },
+        "messages": {
+          "type": "array",
+          "description": "Multi-turn chat messages. Mutually exclusive with 'prompt'.",
+          "items": {
+            "type": "object",
+            "required": ["role", "content"],
+            "additionalProperties": false,
+            "properties": {
+              "role": { "type": "string", "enum": ["system", "user", "assistant"] },
+              "content": { "type": "string" }
+            }
+          }
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+            "max_tokens": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": true
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "k — number of times to call the model for this case."
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum majority-agreement ratio required to pass."
+        },
+        "normalize": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["exact", "embedding", "llm_judge"],
+              "default": "exact",
+              "description": "v1 implements 'exact' only. 'embedding' and 'llm_judge' are reserved for future releases."
+            },
+            "case_insensitive": { "type": "boolean", "default": true },
+            "collapse_whitespace": { "type": "boolean", "default": true },
+            "strip_punctuation": { "type": "boolean", "default": false }
+          }
+        },
+        "extract": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Optional regex with one capture group applied to each response before comparison, to isolate a final answer from a longer chain-of-thought preamble."
+        }
+      }
+    }
+  }
+}

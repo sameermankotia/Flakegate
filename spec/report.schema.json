@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sameermankotia/Flakegate/spec/report.schema.json",
+  "title": "Flakegate JSON report",
+  "description": "The shape of `flakegate run --report json`. Keys are snake_case in both the Python and Node CLIs so a report from either can be consumed identically by downstream tooling (e.g. the GitHub Action).",
+  "type": "object",
+  "required": ["passed", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "passed": {
+      "type": "boolean",
+      "description": "True only if every case passed its threshold."
+    },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/caseReport" }
+    }
+  },
+  "$defs": {
+    "caseReport": {
+      "type": "object",
+      "required": [
+        "id",
+        "repeat",
+        "successful_calls",
+        "failed_calls",
+        "consistency_score",
+        "threshold",
+        "passed",
+        "distinct_answers",
+        "majority_answer",
+        "distribution",
+        "prompt_tokens",
+        "completion_tokens"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "repeat": { "type": "integer", "minimum": 1 },
+        "successful_calls": { "type": "integer", "minimum": 0 },
+        "failed_calls": { "type": "integer", "minimum": 0 },
+        "consistency_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "passed": { "type": "boolean" },
+        "distinct_answers": { "type": "integer", "minimum": 1 },
+        "majority_answer": { "type": "string" },
+        "distribution": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

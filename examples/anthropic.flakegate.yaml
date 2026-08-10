@@ -1,0 +1,18 @@
+version: 1
+provider: anthropic
+model: claude-sonnet-5
+api_key_env: OPENROUTER_API_KEY
+concurrency: 5
+
+cases:
+  - id: refund-policy-qa
+    prompt: "What is our refund policy for orders older than 30 days?"
+    params:
+      temperature: 0.7
+      max_tokens: 300
+    repeat: 10
+    threshold: 0.8
+    normalize:
+      mode: exact
+      case_insensitive: true
+      collapse_whitespace: true

@@ -1,0 +1,18 @@
+# Example: drop this in .github/workflows/flakegate.yml of any repo that has a
+# flakegate.yaml at its root, then add OPENROUTER_API_KEY as a repo secret.
+name: Flakegate
+
+on:
+  pull_request:
+
+jobs:
+  consistency-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: sameermankotia/Flakegate/action@main
+        with:
+          config: flakegate.yaml
+          runtime: python # or: node
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}

@@ -1,0 +1,135 @@
+name: "Flakegate"
+description: "Gate CI on LLM output consistency — runs Flakegate against your config and fails the build if consistency drops below threshold."
+author: "Sameer Mankotia"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  config:
+    description: "Path to the flakegate.yaml config file."
+    required: false
+    default: "flakegate.yaml"
+  runtime:
+    description: "Which Flakegate CLI to use: 'python' or 'node'."
+    required: false
+    default: "python"
+  version:
+    description: "Flakegate version to install (pip/npm version spec, or 'latest')."
+    required: false
+    default: "latest"
+  fail-under:
+    description: "Override every case's threshold with this value (e.g. 0.9)."
+    required: false
+    default: ""
+  report-format:
+    description: "Report format: 'json' or 'md'."
+    required: false
+    default: "md"
+  openrouter-api-key:
+    description: "OpenRouter API key. Optional if OPENROUTER_API_KEY is already set in the job env."
+    required: false
+    default: ""
+  comment-on-pr:
+    description: "Post the Markdown report as a PR comment."
+    required: false
+    default: "true"
+  github-token:
+    description: "Token used to post the PR comment."
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  passed:
+    description: "'true' if every case met its consistency threshold, 'false' otherwise."
+    value: ${{ steps.run.outputs.passed }}
+  report-path:
+    description: "Path to the generated report file."
+    value: ${{ steps.run.outputs.report_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      if: inputs.runtime == 'python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Flakegate (Python)
+      if: inputs.runtime == 'python'
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          pip install flakegate
+        else
+          pip install "flakegate==${{ inputs.version }}"
+        fi
+
+    - name: Set up Node
+      if: inputs.runtime == 'node'
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install Flakegate (Node)
+      if: inputs.runtime == 'node'
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          npm install -g flakegate
+        else
+          npm install -g "flakegate@${{ inputs.version }}"
+        fi
+
+    - name: Run Flakegate
+      id: run
+      shell: bash
+      env:
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key || env.OPENROUTER_API_KEY }}
+      run: |
+        set +e
+        REPORT_PATH="flakegate-report.${{ inputs.report-format }}"
+        ARGS=(run --config "${{ inputs.config }}" --report "${{ inputs.report-format }}" --out "$REPORT_PATH")
+        if [ -n "${{ inputs.fail-under }}" ]; then
+          ARGS+=(--fail-under "${{ inputs.fail-under }}")
+        fi
+        flakegate "${ARGS[@]}"
+        STATUS=$?
+        echo "report_path=$REPORT_PATH" >> "$GITHUB_OUTPUT"
+        if [ "$STATUS" -eq 0 ]; then
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "passed=false" >> "$GITHUB_OUTPUT"
+        fi
+        cat "$REPORT_PATH" || true
+        exit "$STATUS"
+
+    - name: Comment on PR
+      if: always() && inputs.comment-on-pr == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          const reportPath = '${{ steps.run.outputs.report_path }}';
+          let body = '_Flakegate produced no report._';
+          try {
+            body = fs.readFileSync(reportPath, 'utf8');
+          } catch (err) {
+            // report file missing — leave the default message
+          }
+          if ('${{ inputs.report-format }}' === 'json') {
+            body = '```json\n' + body + '\n```';
+          }
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body,
+          });
+
+    - name: Fail if the consistency gate did not pass
+      if: steps.run.outputs.passed != 'true'
+      shell: bash
+      run: exit 1
