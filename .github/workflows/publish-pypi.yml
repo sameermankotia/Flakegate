@@ -1,0 +1,39 @@
+name: Publish Python package to PyPI
+
+# Manual-only trigger, deliberately separate from the TestPyPI workflow —
+# a real PyPI publish is irreversible (versions can be yanked but never
+# reused or deleted), so it should never fire from a routine tag push.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions-pypi
+          path: python/dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # required for OIDC trusted publishing — no token stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions-pypi
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
