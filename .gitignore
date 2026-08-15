@@ -3,6 +3,8 @@ python/.venv/
 python/**/__pycache__/
 python/**/*.egg-info/
 python/.pytest_cache/
+python/dist/
+python/build/
 *.pyc
 
 # Node
